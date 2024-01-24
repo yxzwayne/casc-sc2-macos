@@ -2,15 +2,11 @@
 #include <cstdio>
 #include <iostream>
 
-typedef unsigned long DWORD;
-typedef DWORD *PDWORD;
-
-
 // Function to extract a file from the CASC storage
 static int ExtractFile(HANDLE hStorage, const char* szStorageFile, const char* szFileName) {
-    HANDLE hFile = NULL;          // Storage file handle
-    HANDLE handle = NULL;         // Disk file handle
-    DWORD dwErrCode = ERROR_SUCCESS; // Result value
+    HANDLE hFile = NULL; // Storage file handle
+    FILE* handle = NULL; // Disk file handle
+    int dwErrCode = 0; // Result value
 
     // Open a file in the storage
     if (!CascOpenFile(hStorage, szStorageFile, 0, 0, &hFile)) {
@@ -27,29 +23,31 @@ static int ExtractFile(HANDLE hStorage, const char* szStorageFile, const char* s
 
     // Read the data from the file
     char szBuffer[0x10000];
-    DWORD dwBytesRead = 1;
-    while (dwBytesRead != 0) {
+    size_t dwBytesRead = 0; // Use size_t directly
+    while (true) {
         if (!CascReadFile(hFile, szBuffer, sizeof(szBuffer), &dwBytesRead)) {
             perror("Error reading file");
-            fclose(handle); // Use 'fclose'
+            fclose(handle);
             CascCloseFile(hFile);
-            return errno; // Use 'errno' for error code
+            return errno;
         }
-        if (dwBytesRead > 0) {
-            if (fwrite(szBuffer, 1, dwBytesRead, handle) != dwBytesRead) {
-                perror("Error writing to file");
-                fclose(handle); // Use 'fclose'
-                CascCloseFile(hFile);
-                return errno; // Use 'errno' for error code
-            }
+        if (dwBytesRead == 0) break; // If no bytes were read, we're done
+
+        size_t written = fwrite(szBuffer, 1, dwBytesRead, handle);
+        if (written < dwBytesRead) {
+            perror("Error writing to file");
+            fclose(handle);
+            CascCloseFile(hFile);
+            return errno;
         }
     }
 
     // Cleanup
-    fclose(handle); // Use 'fclose' instead of 'CloseHandle'
+    fclose(handle);
     CascCloseFile(hFile);
-    return 0; // Return success
+    return 0;
 }
+
 
 int main() {
     HANDLE hStorage = NULL;    // Open storage handle
