@@ -2,6 +2,11 @@
 #include <cstdio>
 #include <iostream>
 #include <cerrno>
+#include <cstdint>
+
+#ifndef DWORD
+#define DWORD uint32_t
+#endif
 
 // Function to extract a file from the CASC storage
 static int ExtractFile(HANDLE hStorage, const char *szStorageFile, const char *szFileName)
@@ -66,7 +71,7 @@ int main()
     // Open the StarCraft II storage
     if (!CascOpenStorage(storagePath, 0, &hStorage))
     {
-        std::cerr << "Error opening storage: " << GetLastError() << std::endl;
+        std::cerr << "Error opening storage: " << errno << std::endl;
         return 1;
     }
 
@@ -74,7 +79,7 @@ int main()
     hFind = CascFindFirstFile(hStorage, "*.mp3", &findData, NULL);
     if (hFind == INVALID_HANDLE_VALUE)
     {
-        std::cerr << "Error searching files: " << GetLastError() << std::endl;
+        std::cerr << "Error searching files: " << errno << std::endl;
         CascCloseStorage(hStorage);
         return 1;
     }
@@ -82,7 +87,7 @@ int main()
     do
     {
         char outputPath[1024];
-        snprintf(outputPath, sizeof(outputPath), "%s%s", outputDir, findData.cFileName);
+        snprintf(outputPath, sizeof(outputPath), "%s%s", outputDir, findData.szFileName);
 
         if (ExtractFile(hStorage, findData.szFileName, outputPath) != ERROR_SUCCESS)
         {
